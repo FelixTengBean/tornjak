@@ -16,12 +16,12 @@ type TornjakSpireServerInfo struct {
 	Plugins map[string][]string `json:"plugins"`
 	// TrustDomain specifies the trust domain of the SPIRE server configured with tornjak
 	TrustDomain string `json:"trustDomain"`
-	// Verbose config contains unstructure information on the config on the agent
+	// Verbose config contains unstructured information on the config on the agent
 	VerboseConfig string `json:"verboseConfig"`
 }
 
 // pared down version of full Server Config type spire/cmd/spire-server/cli/run
-// we curently need only extract the trust domain
+// we currently need only extract the trust domain
 type SpireServerConfig struct {
 	TrustDomain string `hcl:"trust_domain"`
 }
@@ -123,14 +123,14 @@ type AuthRole struct {
 }
 
 type APIv1RoleMapping struct {
-	Name string `hcl:",key"`
-	Method string `hcl:"-"`
-	Path string `hcl:"-"`
+	Name         string   `hcl:",key"`
+	Method       string   `hcl:"-"`
+	Path         string   `hcl:"-"`
 	AllowedRoles []string `hcl:"allowed_roles"`
 }
 
 type pluginAuthorizerRBAC struct {
-	Name            string            `hcl:"name"`
-	RoleList        []*AuthRole       `hcl:"role,block"`
+	Name              string              `hcl:"name"`
+	RoleList          []*AuthRole         `hcl:"role,block"`
 	APIv1RoleMappings []*APIv1RoleMapping `hcl:"APIv1,block"`
 }
