@@ -3,7 +3,6 @@ import { connect } from 'react-redux';
 import IsManager from './is_manager';
 import Table from "tables/clusters-list-table";
 import TornjakApi from './tornjak-api-helpers';
-// import PropTypes from "prop-types"
 import {
   serverSelectedFunc,
   agentsListUpdateFunc,
@@ -16,95 +15,135 @@ import {
   clustersListUpdateFunc,
 } from 'redux/actions';
 import { RootState } from 'redux/reducers';
-import { ClustersList, ServerInfo, TornjakServerInfo } from './types'
+import { ClustersList, ServerInfo, TornjakServerInfo } from './types';
 
 type ClusterListProp = {
-  // dispatches a payload for list of clusters with their metadata info as an array of ClustersList Type and has a return type of void
   clustersListUpdateFunc: (globalClustersList: ClustersList[]) => void,
-  // dispatches a payload for the tornjak error messsege and has a return type of void
   tornjakMessageFunc: (globalErrorMessage: string) => void,
-  // dispatches a payload for the server trust domain and nodeAttestorPlugin as a ServerInfoType and has a return type of void
   serverInfoUpdateFunc: (globalServerInfo: ServerInfo) => void,
-  // the selected server for manager mode 
   globalServerSelected: string,
-  // error/ success messege returned for a specific function
   globalErrorMessage: string,
-  // tornjak server info of the selected server
   globalTornjakServerInfo: TornjakServerInfo,
-  // list of clusters with their metadata info as an array of ClustersList Type
   globalClustersList: ClustersList[],
-}
+};
 
 type ClusterListState = {
-  message: string // error/ success messege returned for a specific function for this specific component
-}
+  message: string,
+};
 
-const Cluster = (props: { cluster: ClustersList }) => (
-  <tr>
-    <td>{props.cluster.name}</td>
-    <td>{props.cluster.platformType}</td>
-    <td>{props.cluster.domainName}</td>
-    <td>{props.cluster.managedBy}</td>
-    <td><div style={{ overflowX: 'auto', width: "400px" }}>
-      <pre>{JSON.stringify(props.cluster.agentsList, null, ' ')}</pre>
-    </div></td>
-  </tr>
-)
+/**
+ * Renders a single cluster in a table row.
+ */
+const Cluster = (props: { cluster: ClustersList }) => {
+  const { cluster } = props;
+  return (
+    <tr>
+      <td>{cluster.name}</td>
+      <td>{cluster.platformType}</td>
+      <td>{cluster.domainName}</td>
+      <td>{cluster.managedBy}</td>
+      <td>
+        <div style={{ overflowX: 'auto', width: "400px" }}>
+          <pre>{JSON.stringify(cluster.agentsList, null, ' ')}</pre>
+        </div>
+      </td>
+    </tr>
+  );
+};
 
+/**
+ * ClusterList component displays a list of clusters for the selected server.
+ * It fetches cluster data from Tornjak either in manager mode or locally.
+ */
 class ClusterList extends Component<ClusterListProp, ClusterListState> {
   TornjakApi: TornjakApi;
+
   constructor(props: ClusterListProp) {
     super(props);
     this.TornjakApi = new TornjakApi(props);
-    this.state = {
-      message: "",
-    };
+    this.state = { message: "" };
+
+    this.loadClusters = this.loadClusters.bind(this);
+    this.loadServerInfo = this.loadServerInfo.bind(this);
+    this.clusterList = this.clusterList.bind(this);
   }
 
+  /**
+   * On mount, load clusters depending on manager mode. Also load server info if available.
+   */
   componentDidMount() {
     if (IsManager) {
-      if (this.props.globalServerSelected !== "") {
-        this.TornjakApi.populateClustersUpdate(this.props.globalServerSelected, this.props.clustersListUpdateFunc, this.props.tornjakMessageFunc);
+      if (this.props.globalServerSelected) {
+        this.loadClusters(this.props.globalServerSelected);
       }
     } else {
-      this.TornjakApi.populateLocalClustersUpdate(this.props.clustersListUpdateFunc, this.props.tornjakMessageFunc);
+      this.loadClusters(""); // local mode
       if (this.props.globalTornjakServerInfo && Object.keys(this.props.globalTornjakServerInfo).length) {
-        this.TornjakApi.populateServerInfo(this.props.globalTornjakServerInfo, this.props.serverInfoUpdateFunc);
+        this.loadServerInfo();
       }
     }
   }
 
+  /**
+   * On update, if server selection changes in manager mode, reload clusters.
+   * If Tornjak server info changes in local mode, reload server info.
+   */
   componentDidUpdate(prevProps: ClusterListProp) {
-    if (IsManager) {
-      if (prevProps.globalServerSelected !== this.props.globalServerSelected) {
-        this.TornjakApi.populateClustersUpdate(this.props.globalServerSelected, this.props.clustersListUpdateFunc, this.props.tornjakMessageFunc);
-      }
-    } else {
-      if (prevProps.globalTornjakServerInfo !== this.props.globalTornjakServerInfo) {
-        this.TornjakApi.populateServerInfo(this.props.globalTornjakServerInfo, this.props.serverInfoUpdateFunc);
-      }
+    const { globalServerSelected, globalTornjakServerInfo } = this.props;
+
+    if (IsManager && prevProps.globalServerSelected !== globalServerSelected) {
+      this.loadClusters(globalServerSelected);
+    } else if (!IsManager && prevProps.globalTornjakServerInfo !== globalTornjakServerInfo) {
+      this.loadServerInfo();
     }
   }
 
-  clusterList() {
-    if (typeof this.props.globalClustersList !== 'undefined') {
-      return this.props.globalClustersList.map((currentCluster: ClustersList) => {
-        return <Cluster key={currentCluster.name} cluster={currentCluster} />;
-      })
-    } else {
-      return ""
+  /**
+   * Load clusters based on the current mode.
+   * @param serverName - The selected server name if in manager mode, otherwise empty for local mode.
+   */
+  private loadClusters(serverName: string): void {
+    const { clustersListUpdateFunc, tornjakMessageFunc } = this.props;
+
+    if (IsManager && serverName) {
+      this.TornjakApi.populateClustersUpdate(serverName, clustersListUpdateFunc, tornjakMessageFunc);
+    } else if (!IsManager) {
+      this.TornjakApi.populateLocalClustersUpdate(clustersListUpdateFunc, tornjakMessageFunc);
     }
+  }
+
+  /**
+   * Load server info if Tornjak server info is available.
+   */
+  private loadServerInfo(): void {
+    const { globalTornjakServerInfo, serverInfoUpdateFunc } = this.props;
+    if (globalTornjakServerInfo && Object.keys(globalTornjakServerInfo).length) {
+      this.TornjakApi.populateServerInfo(globalTornjakServerInfo, serverInfoUpdateFunc);
+    }
+  }
+
+  /**
+   * Create a list of Cluster components from the globalClustersList.
+   */
+  private clusterList() {
+    const { globalClustersList } = this.props;
+    if (!globalClustersList || globalClustersList.length === 0) {
+      return "";
+    }
+    return globalClustersList.map((currentCluster: ClustersList) => (
+      <Cluster key={currentCluster.name} cluster={currentCluster} />
+    ));
   }
 
   render() {
+    const { globalErrorMessage } = this.props;
+
     return (
       <div data-test="cluster-list">
         <h3>Clusters List</h3>
-        {this.props.globalErrorMessage !== "OK" &&
+        {globalErrorMessage !== "OK" &&
           <div className="alert-primary" role="alert">
-            <pre>
-              {this.props.globalErrorMessage}
-            </pre>
+            <pre>{globalErrorMessage}</pre>
           </div>
         }
         <br /><br />
@@ -112,39 +151,30 @@ class ClusterList extends Component<ClusterListProp, ClusterListState> {
           <Table data={this.clusterList()} id="table-1" />
         </div>
       </div>
-    )
+    );
   }
 }
-
-// Note: Needed for UI testing - will be removed after
-// ClusterList.propTypes = {
-//   globalServerSelected: PropTypes.string,
-//   globalClustersList: PropTypes.array,
-//   globalTornjakServerInfo: PropTypes.object,
-//   globalErrorMessage: PropTypes.string,
-//   serverSelectedFunc: PropTypes.func,
-//   agentsListUpdateFunc: PropTypes.func,
-//   tornjakServerInfoUpdateFunc: PropTypes.func,
-//   serverInfoUpdateFunc: PropTypes.func,
-//   clusterTypeList: PropTypes.array,
-//   agentsList: PropTypes.array,
-//   selectorInfoFunc: PropTypes.func,
-//   tornjakMessageFunc: PropTypes.func,
-//   workloadSelectorInfoFunc: PropTypes.func,
-//   agentworkloadSelectorInfoFunc: PropTypes.func,
-//   clustersListUpdateFunc: PropTypes.func
-// };
 
 const mapStateToProps = (state: RootState) => ({
   globalServerSelected: state.servers.globalServerSelected,
   globalClustersList: state.clusters.globalClustersList,
   globalTornjakServerInfo: state.servers.globalTornjakServerInfo,
   globalErrorMessage: state.tornjak.globalErrorMessage,
-})
+});
 
 export default connect(
   mapStateToProps,
-  { serverSelectedFunc, agentsListUpdateFunc, tornjakServerInfoUpdateFunc, serverInfoUpdateFunc, selectorInfoFunc, tornjakMessageFunc, workloadSelectorInfoFunc, agentworkloadSelectorInfoFunc, clustersListUpdateFunc }
-)(ClusterList)
+  {
+    serverSelectedFunc,
+    agentsListUpdateFunc,
+    tornjakServerInfoUpdateFunc,
+    serverInfoUpdateFunc,
+    selectorInfoFunc,
+    tornjakMessageFunc,
+    workloadSelectorInfoFunc,
+    agentworkloadSelectorInfoFunc,
+    clustersListUpdateFunc,
+  }
+)(ClusterList);
 
-export { ClusterList }
+export { ClusterList };
