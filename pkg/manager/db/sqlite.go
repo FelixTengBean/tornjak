@@ -96,3 +96,17 @@ func (db *LocalSqliteDb) GetServer(name string) (types.ServerInfo, error) {
 
 	return sinfo, nil
 }
+
+// DeleteServer removes a server from the database by its servername
+func (db *LocalSqliteDb) DeleteServer(name string) error {
+	statement, err := db.database.Prepare("DELETE FROM servers WHERE servername = ?")
+	if err != nil {
+		return errors.Errorf("Unable to prepare DELETE query: %v", err)
+	}
+	_, err = statement.Exec(name)
+	if err != nil {
+		return errors.Errorf("Unable to execute DELETE query for server %s: %v", name, err)
+	}
+
+	return nil
+}
