@@ -10,65 +10,51 @@ import { ToastContainer } from 'react-toastify';
 import './style.css';
 import {
   clusterTypeInfoFunc,
-  serverSelectedFunc,
-  selectorInfoFunc,
   agentsListUpdateFunc,
   tornjakMessageFunc,
   tornjakServerInfoUpdateFunc,
   serverInfoUpdateFunc
 } from 'redux/actions';
-import { RootState } from 'redux/reducers'
-import {
-  AgentLabels,
-  AgentsList,
-  ServerInfo,
-  TornjakServerInfo
-} from './types'
+import { RootState } from 'redux/reducers';
+import { AgentLabels, AgentsList, ServerInfo, TornjakServerInfo } from './types';
 import { showResponseToast, showToast } from './error-api';
 import apiEndpoints from './apiConfig';
 
-type ClusterCreateProp = {
-  serverInfoUpdateFunc: (globalServerInfo: ServerInfo) => void,
-  agentsListUpdateFunc: (globalAgentsList: AgentsList[]) => void,
-  tornjakMessageFunc: (globalErrorMessage: string) => void,
-  tornjakServerInfoUpdateFunc: (globalTornjakServerInfo: TornjakServerInfo) => void,
-  clusterTypeInfoFunc: (globalClusterTypeInfo: string[]) => void,
-  agentsList: AgentLabels[],
-  clusterTypeList: string[],
-  globalServerSelected: string,
-  globalErrorMessage: string,
-  globalTornjakServerInfo: TornjakServerInfo,
-}
+type ClusterCreateProps = {
+  serverInfoUpdateFunc: (globalServerInfo: ServerInfo) => void;
+  agentsListUpdateFunc: (globalAgentsList: AgentsList[]) => void;
+  tornjakMessageFunc: (globalErrorMessage: string) => void;
+  tornjakServerInfoUpdateFunc: (globalTornjakServerInfo: TornjakServerInfo) => void;
+  clusterTypeInfoFunc: (globalClusterTypeInfo: string[]) => void;
+  agentsList: AgentLabels[];
+  clusterTypeList: string[];
+  globalServerSelected: string;
+  globalErrorMessage: string;
+  globalTornjakServerInfo: TornjakServerInfo;
+};
 
 type ClusterCreateState = {
-  clusterName: string,
-  clusterType: string,
-  clusterDomainName: string,
-  clusterManagedBy: string,
-  clusterAgentsList: string[],
-  clusterTypeList: string[],
-  clusterTypeManualEntryOption: string,
-  clusterTypeManualEntry: boolean,
-  message: string,
-  statusOK: string,
-  selectedServer: string,
-  agentsListDisplay: string,
-  assignedAgentsListDisplay: string,
-}
+  clusterName: string;
+  clusterType: string;
+  clusterDomainName: string;
+  clusterManagedBy: string;
+  clusterAgentsList: string[];
+  clusterTypeList: string[];
+  clusterTypeManualEntryOption: string;
+  clusterTypeManualEntry: boolean;
+  message: string;
+  statusOK: string;
+  selectedServer: string;
+  agentsListDisplay: string;
+  assignedAgentsListDisplay: string;
+};
 
-class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
+class ClusterCreate extends Component<ClusterCreateProps, ClusterCreateState> {
   TornjakApi: TornjakApi;
-  
-  constructor(props: ClusterCreateProp) {
+
+  constructor(props: ClusterCreateProps) {
     super(props);
     this.TornjakApi = new TornjakApi(props);
-    this.onChangeClusterName = this.onChangeClusterName.bind(this);
-    this.onChangeClusterType = this.onChangeClusterType.bind(this);
-    this.onChangeManualClusterType = this.onChangeManualClusterType.bind(this);
-    this.onChangeClusterDomainName = this.onChangeClusterDomainName.bind(this);
-    this.onChangeClusterManagedBy = this.onChangeClusterManagedBy.bind(this);
-    this.onChangeAgentsList = this.onChangeAgentsList.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
 
     this.state = {
       clusterName: "",
@@ -84,11 +70,11 @@ class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
       selectedServer: "",
       agentsListDisplay: "Select Agents",
       assignedAgentsListDisplay: "",
-    }
+    };
   }
 
   componentDidMount() {
-    this.props.clusterTypeInfoFunc(clusterType); //set cluster type info
+    this.props.clusterTypeInfoFunc(clusterType); // Initialize cluster type info
     if (IsManager) {
       if (this.props.globalServerSelected !== "" && (this.props.globalErrorMessage === "OK" || this.props.globalErrorMessage === "")) {
         this.TornjakApi.populateAgentsUpdate(this.props.globalServerSelected, this.props.agentsListUpdateFunc, this.props.tornjakMessageFunc);
@@ -102,328 +88,194 @@ class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
     }
   }
 
-  componentDidUpdate(prevProps: ClusterCreateProp) {
-    if (IsManager) {
-      if (prevProps.globalServerSelected !== this.props.globalServerSelected) {
-        this.setState({ selectedServer: this.props.globalServerSelected });
-      }
+  componentDidUpdate(prevProps: ClusterCreateProps) {
+    if (IsManager && prevProps.globalServerSelected !== this.props.globalServerSelected) {
+      this.setState({ selectedServer: this.props.globalServerSelected });
     }
   }
 
-  onChangeAgentsList = (selected: { selectedItems: AgentLabels[]; } | undefined): void => {
-    if (selected === undefined) {
-      return;
+  handleChange = (field: string, value: string) => {
+    this.setState({ [field]: value } as Pick<ClusterCreateState, keyof ClusterCreateState>);
+  };
+
+  handleSelectChange = (field: string, selectedItem: string) => {
+    if (field === 'clusterType' && selectedItem === this.state.clusterTypeManualEntryOption) {
+      this.setState({ clusterTypeManualEntry: true, clusterType: selectedItem });
+    } else {
+      this.setState({ clusterType: selectedItem, clusterTypeManualEntry: false });
     }
-    var sid = selected.selectedItems, agents = [], agentsDisplay = "", assignedAgentsDisplay = "";
-    let localAgentsIdList = [];
-    for (let i = 0; i < sid.length; i++) {
-      localAgentsIdList[i] = sid[i].label;
-    }
-    agents = localAgentsIdList;
-    agentsDisplay = localAgentsIdList.toString();
-    assignedAgentsDisplay = localAgentsIdList.join("\n");
-    if (agentsDisplay.length === 0) {
-      agentsDisplay = "Select Agents"
-    }
+  };
+
+  handleAgentsListChange = (selected: { selectedItems: AgentLabels[] } | undefined): void => {
+    if (!selected) return;
+    const agents = selected.selectedItems.map((item) => item.label);
+    const agentsDisplay = agents.join(', ') || "Select Agents";
+    const assignedAgentsListDisplay = agents.join("\n");
     this.setState({
       clusterAgentsList: agents,
       agentsListDisplay: agentsDisplay,
-      assignedAgentsListDisplay: assignedAgentsDisplay,
+      assignedAgentsListDisplay,
     });
-  }
+  };
 
-  onChangeClusterName(e: { target: { value: string; }; } | undefined): void {
-    if (e === undefined) {
-      return;
+  generateClusterName = (): string => {
+    if (!this.state.clusterName) {
+      return `cluster-${Date.now()}`; // Generate a name if empty
     }
-    var sid = e.target.value;
-    this.setState({
-      clusterName: sid
-    });
-    return
-  }
-
-  onChangeClusterType = (selected: { selectedItem: string }): void => {
-    if (selected === undefined) {
-      return;
-    }
-    var sid = selected.selectedItem;
-    if (sid === this.state.clusterTypeManualEntryOption) {
-      this.setState({
-        clusterTypeManualEntry: true,
-        clusterType: sid,
-      });
-    } else {
-      this.setState({
-        clusterType: sid,
-        clusterTypeManualEntry: false
-      });
-    }
-    return
-  }
-
-  onChangeManualClusterType(e: { target: { value: string; }; } | undefined): void {
-    if (e === undefined) {
-      return;
-    }
-    var sid = e.target.value;
-    this.setState({
-      clusterType: sid
-    });
-    return
-  }
-
-  onChangeClusterDomainName(e: { target: { value: string; }; } | undefined): void {
-    if (e === undefined) {
-      return;
-    }
-    var sid = e.target.value;
-    this.setState({
-      clusterDomainName: sid
-    });
-    return
-  }
-
-  onChangeClusterManagedBy(e: { target: { value: string; }; } | undefined): void {
-    if (e === undefined) {
-      return;
-    }
-    var sid = e.target.value;
-    this.setState({
-      clusterManagedBy: sid
-    });
-    return
-  }
+    return this.state.clusterName;
+  };
 
   getApiEntryCreateEndpoint(): string {
+    const { selectedServer } = this.state;
     if (!IsManager) {
-      return GetApiServerUri(apiEndpoints.tornjakClustersApi)
-    } else if (IsManager && this.state.selectedServer !== "") {
-      return GetApiServerUri('/manager-api/tornjak/clusters/create') + "/" + this.state.selectedServer
-    } else {
-      this.setState({ message: "Error: No server selected" })
-      return ""
+      return GetApiServerUri(apiEndpoints.tornjakClustersApi);
+    } else if (IsManager && selectedServer) {
+      return GetApiServerUri(`/manager-api/tornjak/clusters/create/${selectedServer}`);
     }
+    this.setState({ message: "Error: No server selected" });
+    return "";
   }
 
-  onSubmit(e: { preventDefault: () => void; } | undefined): void {
-    if (e !== undefined) {
-      e.preventDefault()
+  onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { clusterName, clusterType, clusterDomainName, clusterManagedBy, clusterAgentsList } = this.state;
+
+    // Validation
+    if (!clusterName) {
+      showToast({ caption: "The cluster name cannot be empty." });
+      return;
+    }
+    if (!clusterType || clusterType === this.state.clusterTypeManualEntryOption) {
+      showToast({ caption: "The cluster type cannot be empty." });
+      return;
     }
 
-    if (!this.state.clusterName) {
-      showToast({ caption: "The cluster name cannot be empty." })
-      return
-    }
-
-    if ((this.state.clusterTypeManualEntry && this.state.clusterType === this.state.clusterTypeManualEntryOption) || !this.state.clusterType) {
-      showToast({ caption: "The cluster type cannot be empty." })
-      return
-    }
-
-    var cjtData = {
+    const cjtData = {
       cluster: {
-        name: this.state.clusterName || `cluster-${Date.now()}`, // Auto-generate if empty
-        platformType: this.state.clusterType,
-        domainName: this.state.clusterDomainName,
-        managedBy: this.state.clusterManagedBy,
-        agentsList: this.state.clusterAgentsList ? this.state.clusterAgentsList : []
-      }
+        name: this.generateClusterName(),
+        platformType: clusterType,
+        domainName: clusterDomainName,
+        managedBy: clusterManagedBy,
+        agentsList: clusterAgentsList,
+      },
+    };
+
+    const endpoint = this.getApiEntryCreateEndpoint();
+    if (!endpoint) return;
+
+    try {
+      const response = await axios.post(endpoint, cjtData);
+      this.setState({
+        message: `Request: ${JSON.stringify(cjtData, null, ' ')}\n\nSuccess: ${JSON.stringify(response.data, null, ' ')}`,
+        statusOK: "OK",
+      });
+    } catch (err) {
+      showResponseToast(err);
     }
 
-    let endpoint = this.getApiEntryCreateEndpoint()
-
-    if (!endpoint) {
-      return
-    }
-
-    axios.post(endpoint, cjtData)
-      .then(
-        res => {
-          this.setState({
-            message: "Request:" + JSON.stringify(cjtData, null, ' ') + "\n\nSuccess:" + JSON.stringify(res.data, null, ' '),
-            statusOK: "OK",
-          })
-        }
-      )
-      .catch(err => showResponseToast(err))
-    //scroll to bottom of page after submission  
-    setTimeout(() => {
-      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
-    }, 100);
-  }
+    // Scroll to the bottom of the page after submission
+    setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }), 100);
+  };
 
   render() {
-    const ClusterType = this.props.clusterTypeList;
+    const { clusterTypeList, agentsList } = this.props;
+    const { clusterTypeManualEntryOption, clusterTypeManualEntry, agentsListDisplay, assignedAgentsListDisplay, message, statusOK } = this.state;
+
     return (
       <div>
         <div className="cluster-create" data-test="cluster-create">
           <div className="create-create-title" data-test="create-title">
             <h3>Create Cluster</h3>
           </div>
-          <form onSubmit={this.onSubmit} data-test="create-cluster-form">
-            <br /><br />
+          <form onSubmit={this.onSubmit}>
+            <br />
             <div className="entry-form">
-              <div
-                className="clustername-input-field"
-                data-test="clustername-input-field">
+              <TextInput
+                labelText="Cluster Name [*required]"
+                placeholder="Enter CLUSTER NAME"
+                onChange={(e) => this.handleChange('clusterName', e.target.value)}
+                helperText="i.e. exampleabc"
+                invalidText="A valid value is required - refer to helper text below"
+                value={this.state.clusterName}
+              />
+              <Dropdown
+                items={clusterTypeList}
+                label="Select Cluster Type"
+                titleText="Cluster Type [*required]"
+                onChange={(e) => this.handleSelectChange('clusterType', e.selectedItem)}
+                helperText="i.e. Kubernetes, VMs..."
+              />
+              {clusterTypeManualEntry && (
                 <TextInput
-                  data-test="clustername-Text-input-field"
-                  aria-required="true"
-                  helperText="i.e. exampleabc"
-                  id="clusterNameInputField"
-                  invalidText="A valid value is required - refer to helper text below"
-                  labelText="Cluster Name [*required]"
-                  placeholder="Enter CLUSTER NAME"
-                  onChange={this.onChangeClusterName}
-                  role="cluster-name"
+                  labelText="Cluster Type - Manual Entry"
+                  placeholder="Enter Cluster Type"
+                  onChange={(e) => this.handleChange('clusterType', e.target.value)}
+                  helperText="i.e. Kubernetes, VMs..."
                 />
-              </div>
-              <div
-                className="clustertype-drop-down"
-                data-test="clustertype-drop-down">
-                <Dropdown
-                  aria-required="true"
-                  ariaLabel="clustertype-drop-down"
-                  id="clustertype-drop-down"
-                  items={ClusterType}
-                  label="Select Cluster Type"
-                  titleText="Cluster Type [*required]"
-                  onChange={this.onChangeClusterType}
-                  role="cluster-type"
-                />
-                <p className="cluster-helper">i.e. Kubernetes, VMs...</p>
-              </div>
-              {this.state.clusterTypeManualEntry &&
-                <div className="clustertype-manual-input-field">
-                  <TextInput
-                    helperText="i.e. Kubernetes, VMs..."
-                    id="clusterTypeManualInputField"
-                    invalidText="A valid value is required - refer to helper text below"
-                    labelText="Cluster Type - Manual Entry"
-                    placeholder="Enter Cluster Type"
-                    onChange={(e) => {
-                      this.onChangeManualClusterType(e);
-                    }}
-                  />
-                </div>}
-              <div
-                className="cluster-domain-name-input-field"
-                data-test="cluster-domain-name-input-field"
-              >
-                <TextInput
-                  helperText="i.e. example.org"
-                  id="clusterDomainNameInputField"
-                  invalidText="A valid value is required - refer to helper text below"
-                  labelText="Cluster Domain Name/ URL"
-                  placeholder="Enter CLUSTER DOMAIN NAME/ URL"
-                  onChange={this.onChangeClusterDomainName}
-                />
-              </div>
-              <div className="cluster-managed-by-input-field">
-                <TextInput
-                  data-test="cluster-domain-name-input-text-field"
-                  helperText="i.e. person-A"
-                  id="clusterNameInputField"
-                  invalidText="A valid value is required - refer to helper text below"
-                  labelText="Cluster Managed By"
-                  placeholder="Enter CLUSTER MANAGED BY"
-                  onChange={this.onChangeClusterManagedBy}
-                />
-              </div>
-              <div className="agents-multiselect" data-test="agents-multiselect">
-                <FilterableMultiSelect
-                  titleText="Assign Agents To Cluster"
-                  helperText="i.e. spiffe://example.org/agent/myagent1..."
-                  placeholder={this.state.agentsListDisplay}
-                  id="selectors-multiselect"
-                  items={this.props.agentsList}
-                  label={this.state.agentsListDisplay}
-                  onChange={this.onChangeAgentsList}
-                />
-              </div>
-              <div className="selectors-textArea" data-test="selectors-textArea">
-                <TextArea
-                  cols={50}
-                  helperText="i.e. spiffe://example.org/agent/myagent1..."
-                  id="selectors-textArea"
-                  invalidText="A valid value is required"
-                  labelText="Assigned Agents"
-                  placeholder="Assigned agents will be populated here - Refer to Assign Agents To Cluster"
-                  defaultValue={this.state.assignedAgentsListDisplay}
-                  rows={8}
-                  disabled
-                />
-              </div>
+              )}
+              <TextInput
+                labelText="Cluster Domain Name/ URL"
+                placeholder="Enter CLUSTER DOMAIN NAME/ URL"
+                onChange={(e) => this.handleChange('clusterDomainName', e.target.value)}
+                helperText="i.e. example.org"
+              />
+              <TextInput
+                labelText="Cluster Managed By"
+                placeholder="Enter CLUSTER MANAGED BY"
+                onChange={(e) => this.handleChange('clusterManagedBy', e.target.value)}
+                helperText="i.e. person-A"
+              />
+              <FilterableMultiSelect
+                titleText="Assign Agents To Cluster"
+                helperText="i.e. spiffe://example.org/agent/myagent1..."
+                placeholder={agentsListDisplay}
+                items={agentsList}
+                onChange={this.handleAgentsListChange}
+              />
+              <TextArea
+                cols={50}
+                rows={8}
+                helperText="Assigned agents will be populated here"
+                labelText="Assigned Agents"
+                placeholder="Assigned agents will be populated here - Refer to Assign Agents To Cluster"
+                defaultValue={assignedAgentsListDisplay}
+                disabled
+              />
               <div className="form-group" data-test="create-cluster-button">
                 <input type="submit" value="CREATE CLUSTER" className="btn btn-primary" />
               </div>
-              <div>
-                {this.state.statusOK === "OK" &&
-                  <InlineNotification
-                    kind="success"
-                    hideCloseButton
-                    title="CLUSTER SUCCESSFULLY CREATED"
-                    subtitle={
-                      <div className="toast-messege" data-test="alert-primary">
-                        <pre className="toast-messege-color">
-                          {this.state.message}
-                        </pre>
-                      </div>
-                    }
-                  />
-                }
-                {(this.state.statusOK === "ERROR") &&
-                  <InlineNotification
-                    kind="error"
-                    hideCloseButton
-                    title="CLUSTER CREATION FAILED"
-                    subtitle={
-                      <div className="toast-messege" data-test="alert-primary">
-                        <pre className="toast-messege-color">
-                          {this.state.message}
-                        </pre>
-                      </div>
-                    }
-                  />
-                }
-              </div>
             </div>
           </form>
+          {statusOK && (
+            <InlineNotification
+              kind={statusOK === "OK" ? "success" : "error"}
+              hideCloseButton
+              title={statusOK === "OK" ? "CLUSTER SUCCESSFULLY CREATED" : "CLUSTER CREATION FAILED"}
+              subtitle={<pre className="toast-message-color">{message}</pre>}
+            />
+          )}
         </div>
-        <ToastContainer
-          className="carbon-toast"
-          containerId="notifications"
-          draggable={false}
-        />
+        <ToastContainer className="carbon-toast" containerId="notifications" draggable={false} />
       </div>
-    )
+    );
   }
 }
 
 const mapStateToProps = (state: RootState) => ({
   globalClusterTypeInfo: state.clusters.globalClusterTypeInfo,
   globalServerSelected: state.servers.globalServerSelected,
-  globalSelectorInfo: state.servers.globalSelectorInfo,
-  globalAgentsList: state.agents.globalAgentsList,
-  globalServerInfo: state.servers.globalServerInfo,
-  globalTornjakServerInfo: state.servers.globalTornjakServerInfo,
   globalErrorMessage: state.tornjak.globalErrorMessage,
-  globalWorkloadSelectorInfo: state.servers.globalWorkloadSelectorInfo,
-  globalAgentsWorkLoadAttestorInfo: state.agents.globalAgentsWorkLoadAttestorInfo,
-})
+  globalTornjakServerInfo: state.servers.globalTornjakServerInfo,
+  globalAgentsList: state.agents.globalAgentsList,
+});
 
-export default connect(
-  mapStateToProps,
-  {
-    clusterTypeInfoFunc,
-    serverSelectedFunc,
-    selectorInfoFunc,
-    agentsListUpdateFunc,
-    tornjakMessageFunc,
-    tornjakServerInfoUpdateFunc,
-    serverInfoUpdateFunc
-  }
-)(ClusterCreate)
+export default connect(mapStateToProps, {
+  clusterTypeInfoFunc,
+  agentsListUpdateFunc,
+  tornjakMessageFunc,
+  tornjakServerInfoUpdateFunc,
+  serverInfoUpdateFunc,
+})(ClusterCreate);
 
-export { ClusterCreate }
+export { ClusterCreate };
