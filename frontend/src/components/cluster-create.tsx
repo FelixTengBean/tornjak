@@ -28,25 +28,15 @@ import { showResponseToast, showToast } from './error-api';
 import apiEndpoints from './apiConfig';
 
 type ClusterCreateProp = {
-  // dispatches a payload for the server trust domain and nodeAttestorPlugin as a ServerInfoType and has a return type of void
   serverInfoUpdateFunc: (globalServerInfo: ServerInfo) => void,
-  // dispatches a payload for list of agents with their metadata info as an array of AgentListType and has a return type of void
   agentsListUpdateFunc: (globalAgentsList: AgentsList[]) => void,
-  // dispatches a payload for the tornjak error messsege and has a return type of void
   tornjakMessageFunc: (globalErrorMessage: string) => void,
-  // dispatches a payload for the tornjak server info of the selected server and has a return type of void
   tornjakServerInfoUpdateFunc: (globalTornjakServerInfo: TornjakServerInfo) => void,
-  // dispatches a payload for cluster types as array of strings and has a return type of void
   clusterTypeInfoFunc: (globalClusterTypeInfo: string[]) => void,
-  // list of agents' SPIFEE ID's as strings
   agentsList: AgentLabels[],
-  // cluster types as array of strings
   clusterTypeList: string[],
-  // the selected server for manager mode 
   globalServerSelected: string,
-  // tornjak error messege
   globalErrorMessage: string,
-  // tornjak server info of the selected server
   globalTornjakServerInfo: TornjakServerInfo,
 }
 
@@ -68,6 +58,7 @@ type ClusterCreateState = {
 
 class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
   TornjakApi: TornjakApi;
+  
   constructor(props: ClusterCreateProp) {
     super(props);
     this.TornjakApi = new TornjakApi(props);
@@ -232,7 +223,7 @@ class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
 
     var cjtData = {
       cluster: {
-        name: this.state.clusterName,
+        name: this.state.clusterName || `cluster-${Date.now()}`, // Auto-generate if empty
         platformType: this.state.clusterType,
         domainName: this.state.clusterDomainName,
         managedBy: this.state.clusterManagedBy,
@@ -300,7 +291,6 @@ class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
                   titleText="Cluster Type [*required]"
                   onChange={this.onChangeClusterType}
                   role="cluster-type"
-                // typescript throws an error when enabled - need to explore more to enable feature for now "aria-required" is enabled
                 />
                 <p className="cluster-helper">i.e. Kubernetes, VMs...</p>
               </div>
@@ -410,32 +400,6 @@ class ClusterCreate extends Component<ClusterCreateProp, ClusterCreateState> {
     )
   }
 }
-
-// Note: Needed for UI testing - will be removed after
-// ClusterCreate.propTypes = {
-//   clusterTypeList: PropTypes.array,
-//   agentsList: PropTypes.array,
-//   // globalAgentsList: PropTypes.array,
-//   agentsListUpdateFunc: PropTypes.func,
-//   clusterTypeInfoFunc: PropTypes.func,
-//   // globalAgentsWorkLoadAttestorInfo: PropTypes.array,
-//   // globalClusterTypeInfo: PropTypes.array,
-//   globalErrorMessage: PropTypes.string,
-//   // globalSelectorInfo: PropTypes.object,
-//   // globalServerInfo: PropTypes.object,
-//   globalServerSelected: PropTypes.string,
-//   globalTornjakServerInfo: PropTypes.object,
-//   // globalWorkloadSelectorInfo: PropTypes.object,
-//   // selectorInfoFunc: PropTypes.func,
-//   serverInfoUpdateFunc: PropTypes.func,
-//   // serverSelectedFunc: PropTypes.func,
-//   tornjakMessageFunc: PropTypes.func,
-//   tornjakServerInfoUpdateFunc: PropTypes.func,
-//   // agentsList: PropTypes.arrayOf(PropTypes.shape({
-//   //   key1: PropTypes.string,
-//   //   key2: PropTypes.object
-//   // })),
-// };
 
 const mapStateToProps = (state: RootState) => ({
   globalClusterTypeInfo: state.clusters.globalClusterTypeInfo,
