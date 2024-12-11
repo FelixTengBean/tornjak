@@ -97,15 +97,15 @@ func NewAgentsDB(dbPlugin *ast.ObjectItem) (agentdb.AgentDB, error) {
 // NewCRDManager returns ...
 func NewCRDManager(crdPlugin *ast.ObjectItem) (spirecrd.CRDManager, error) {
 	_, data, _ := getPluginConfig(crdPlugin)
-	
+
 	// check if data is defined
 	if data == nil {
-		return "", errors.New("SPIRECRDManager plugin ('config > plugins > SPIRECRDManager > plugin_data') not populated")
+		return nil, errors.New("SPIRECRDManager plugin ('config > plugins > SPIRECRDManager > plugin_data') not populated")
 	}
 	// decode config to struct
 	var config pluginControllerManager
 	if err := hcl.DecodeObject(&config, data); err != nil {
-		return "", errors.Errorf("Couldn't parse SPIREControllerManager config: %v", err)
+		return nil, errors.Errorf("Couldn't parse SPIREControllerManager config: %v", err)
 	}
 
 	fmt.Println("CRD Controller configured. WARNING: This is currently a no-op")
